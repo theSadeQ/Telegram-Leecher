@@ -3,6 +3,7 @@
 
 import pytz
 import shutil
+import random
 import logging
 from time import time
 from asyncio import sleep
@@ -140,12 +141,13 @@ async def taskScheduler():
 
     Messages.src_link = f"https://t.me/c/{Messages.link_p}/{MSG.sent_msg.id}"
     Messages.task_msg += f"__[{BOT.Mode.type.capitalize()} {BOT.Mode.mode.capitalize()} as {BOT.Setting.stream_upload}]({Messages.src_link})__\n\n"
-
+    
     await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.CANCEL)
 
-    MSG.status_msg = await colab_bot.send_message(  # type: ignore
+    MSG.status_msg = await colab_bot.send_photo(  # type: ignore
         chat_id=OWNER,
-        text=Messages.task_msg
+        photo=f"https://picsum.photos/id/{random.randint(1, 1010)}/900/600",
+        caption=Messages.task_msg
         + Messages.status_head
         + f"\n📝 __Starting DOWNLOAD...__"
         + sysINFO(),

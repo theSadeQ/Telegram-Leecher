@@ -7,7 +7,7 @@ from asyncio import sleep
 from pyrogram import enums
 from os import path as ospath
 from datetime import datetime
-from colab_leecher import colab_bot
+from colab_leecher import OWNER, colab_bot
 from pyrogram.errors import FloodWait
 from colab_leecher.utility.variables import BOT, Transfer, BotTimes, Messages, MSG, Paths
 from colab_leecher.utility.helper import sizeUnit, fileType, getTime, status_bar, thumbMaintainer, videoExtFix
@@ -42,8 +42,8 @@ async def upload_file(file_path, real_name):
     # Upload the file
     try:
         if f_type == "video":
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.UPLOAD_VIDEO)
-
+            await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.UPLOAD_VIDEO)
+            
             # For Renaming to mp4
             if not BOT.Options.stream_upload:
                 file_path = videoExtFix(file_path)
@@ -64,11 +64,9 @@ async def upload_file(file_path, real_name):
                 reply_to_message_id=MSG.sent_msg.id,
             )
 
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.CANCEL)
-
         elif f_type == "audio":
             thmb_path = None if not ospath.exists(Paths.THMB_PATH) else Paths.THMB_PATH
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.UPLOAD_AUDIO)
+            await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.UPLOAD_AUDIO)
             MSG.sent_msg = await MSG.sent_msg.reply_audio(
                 audio=file_path,
                 caption=caption,
@@ -77,11 +75,9 @@ async def upload_file(file_path, real_name):
                 reply_to_message_id=MSG.sent_msg.id,
             )
 
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.CANCEL)
-
         elif f_type == "document":
 
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.UPLOAD_DOCUMENT)
+            await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.UPLOAD_DOCUMENT)
 
             if ospath.exists(Paths.THMB_PATH):
                 thmb_path = Paths.THMB_PATH
@@ -98,10 +94,8 @@ async def upload_file(file_path, real_name):
                 reply_to_message_id=MSG.sent_msg.id,
             )
 
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.CANCEL)
-
         elif f_type == "photo":
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.UPLOAD_PHOTO)
+            await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.UPLOAD_PHOTO)
 
             MSG.sent_msg = await MSG.sent_msg.reply_photo(
                 photo=file_path,
@@ -109,8 +103,6 @@ async def upload_file(file_path, real_name):
                 progress=progress_bar,
                 reply_to_message_id=MSG.sent_msg.id,
             )
-
-            await colab_bot.send_chat_action(chat_id=MSG.sent_msg.chat.id, action=enums.ChatAction.CANCEL)
 
         Transfer.sent_file.append(MSG.sent_msg)
         Transfer.sent_file_names.append(real_name)
