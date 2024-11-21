@@ -5,9 +5,10 @@ import pytz
 import shutil
 import logging
 from time import time
-from datetime import datetime
 from asyncio import sleep
-from os import makedirs, path as ospath, system
+from pyrogram import enums
+from datetime import datetime
+from os import makedirs, path as ospath
 from colab_leecher import OWNER, colab_bot, DUMP_ID
 from colab_leecher.downlader.manager import calDownSize, get_d_name, downloadManager
 from colab_leecher.utility.helper import (
@@ -139,8 +140,8 @@ async def taskScheduler():
 
     Messages.src_link = f"https://t.me/c/{Messages.link_p}/{MSG.sent_msg.id}"
     Messages.task_msg += f"__[{BOT.Mode.type.capitalize()} {BOT.Mode.mode.capitalize()} as {BOT.Setting.stream_upload}]({Messages.src_link})__\n\n"
-
-    await MSG.status_msg.delete()
+    
+    await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.CANCEL)
 
     MSG.status_msg = await colab_bot.send_photo(  # type: ignore
         chat_id=OWNER,
@@ -155,7 +156,9 @@ async def taskScheduler():
     await calDownSize(BOT.SOURCE)
 
     if not is_dir:
+        await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.PLAYING)
         await get_d_name(BOT.SOURCE[0])
+        await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.CANCEL)
     else:
         Messages.download_name = ospath.basename(BOT.SOURCE[0])
 
