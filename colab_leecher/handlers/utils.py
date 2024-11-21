@@ -2,7 +2,7 @@
 
 import logging
 from asyncio import sleep
-from pyrogram import filters, enums, BadRequest
+from pyrogram.errors import BadRequest
 from colab_leecher import colab_bot, OWNER
 from colab_leecher.utility.variables import BOT, MSG, BotTimes, Paths
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
