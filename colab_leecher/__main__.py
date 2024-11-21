@@ -2,36 +2,61 @@
 
 
 import logging, os
-from pyrogram import filters, enums
 from datetime import datetime
+from pyrogram import filters, enums
 from asyncio import sleep, get_event_loop
 from colab_leecher import colab_bot, OWNER
 from colab_leecher.utility.handler import cancelTask
 from .utility.variables import BOT, MSG, BotTimes, Paths
 from .utility.task_manager import taskScheduler, task_starter
+from .utility.helper import isLink, setThumbnail, message_deleter
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from .utility.helper import isLink, setThumbnail, message_deleter, send_settings
 
+# Handler functions
+from .handlers import utils
 
 src_request_msg = None
 
 
+# ================= Utility Handlers =================
+
+
+# /start command handler
 @colab_bot.on_message(filters.command("start") & filters.private)
 async def start(client, message):
+    await utils.start(message)
+
+
+# /settings command handler
+@colab_bot.on_message(filters.command("settings") & filters.user(OWNER))
+async def settings(client, message):
     await message.delete()
-    text = "**Hey There, 👋🏼 It's Colab Leecher**\n\n◲ I am a Powerful File Transloading Bot 🚀\n◲ I can Transfer Files To Telegram or Your Google Drive From Various Sources 🦐"
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "Repository 🦄",
-                    url="https://github.com/XronTrix10/Telegram-Leecher",
-                ),
-                InlineKeyboardButton("Support 💝", url="https://t.me/Colab_Leecher"),
-            ],
-        ]
-    )
-    await message.reply_text(text, reply_markup=keyboard)
+    await utils.send_settings(message, message.id, True)
+
+
+# /help command handler
+@colab_bot.on_message(filters.command("help") & filters.private)
+async def help_command(client, message):
+    await utils.help_command(message)
+
+
+# ================= Thumbnail Handlers =================
+
+
+# sets thumbnail image
+@colab_bot.on_message(filters.photo & filters.private)
+async def handle_image(client, message):
+    msg = await message.reply_text("<i>Trying To Save Thumbnail...</i>")
+    success = await setThumbnail(message)
+    if success:
+        await msg.edit_text("**Thumbnail Successfully Changed ✅**")
+        await message.delete()
+    else:
+        await msg.edit_text(
+            "🥲 **Couldn't Set Thumbnail, Please Try Again !**", quote=True
+        )
+    await sleep(15)
+    await message_deleter(message, msg)
 
 
 @colab_bot.on_message(filters.command("tupload") & filters.private)
@@ -78,13 +103,6 @@ async def yt_upload(client, message):
     src_request_msg = await task_starter(message, text)
 
 
-@colab_bot.on_message(filters.command("settings") & filters.private)
-async def settings(client, message):
-    if message.chat.id == OWNER:
-        await message.delete()
-        await send_settings(client, message, message.id, True)
-
-
 @colab_bot.on_message(filters.reply)
 async def setPrefix(client, message):
     global BOT, SETTING
@@ -92,13 +110,13 @@ async def setPrefix(client, message):
         BOT.Setting.prefix = message.text
         BOT.State.prefix = False
 
-        await send_settings(client, message, message.reply_to_message_id, False)
+        await utils.send_settings(message, message.reply_to_message_id, False)
         await message.delete()
     elif BOT.State.suffix:
         BOT.Setting.suffix = message.text
         BOT.State.suffix = False
 
-        await send_settings(client, message, message.reply_to_message_id, False)
+        await utils.send_settings(message, message.reply_to_message_id, False)
         await message.delete()
 
 
@@ -241,8 +259,8 @@ async def handle_options(client, callback_query):
         if BOT.Setting.thumbnail:
             os.remove(Paths.THMB_PATH)
         BOT.Setting.thumbnail = False
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
     elif callback_query.data == "set-prefix":
         await callback_query.message.edit_text(
@@ -264,16 +282,16 @@ async def handle_options(client, callback_query):
         res = callback_query.data.split("-")
         BOT.Options.caption = res[0]
         BOT.Setting.caption = res[1]
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
     elif callback_query.data in ["split-true", "split-false"]:
         BOT.Options.is_split = True if callback_query.data == "split-true" else False
         BOT.Setting.split_video = (
             "Split Videos" if callback_query.data == "split-true" else "Zip Videos"
         )
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
     elif callback_query.data in [
         "convert-true",
@@ -295,28 +313,28 @@ async def handle_options(client, callback_query):
             BOT.Options.convert_quality = (
                 True if BOT.Setting.convert_quality == "High" else False
             )
-            await send_settings(
-                client, callback_query.message, callback_query.message.id, False
+            await utils.send_settings(
+                callback_query.message, callback_query.message.id, False
             )
         else:
             BOT.Options.video_out = callback_query.data
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
     elif callback_query.data in ["media", "document"]:
         BOT.Options.stream_upload = True if callback_query.data == "media" else False
         BOT.Setting.stream_upload = (
             "Media" if callback_query.data == "media" else "Document"
         )
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
 
     elif callback_query.data == "close":
         await callback_query.message.delete()
     elif callback_query.data == "back":
-        await send_settings(
-            client, callback_query.message, callback_query.message.id, False
+        await utils.send_settings(
+            callback_query.message, callback_query.message.id, False
         )
 
     # @main Triggering Actual Leech Functions
@@ -347,21 +365,6 @@ async def handle_options(client, callback_query):
     # If user Wants to Stop The Task
     elif callback_query.data == "cancel":
         await cancelTask("User Cancelled !")
-
-
-@colab_bot.on_message(filters.photo & filters.private)
-async def handle_image(client, message):
-    msg = await message.reply_text("<i>Trying To Save Thumbnail...</i>")
-    success = await setThumbnail(message)
-    if success:
-        await msg.edit_text("**Thumbnail Successfully Changed ✅**")
-        await message.delete()
-    else:
-        await msg.edit_text(
-            "🥲 **Couldn't Set Thumbnail, Please Try Again !**", quote=True
-        )
-    await sleep(15)
-    await message_deleter(message, msg)
 
 
 @colab_bot.on_message(filters.command("setname") & filters.private)
@@ -414,36 +417,6 @@ async def unzip_pswd(client, message):
             "Unzip Password Has Been Successfully Set !", quote=True
         )
 
-    await sleep(15)
-    await message_deleter(message, msg)
-
-
-@colab_bot.on_message(filters.command("help") & filters.private)
-async def help_command(client, message):
-    msg = await message.reply_text(
-        "Send /start To Check If I am alive 🤨\n\nSend /colabxr and follow prompts to start transloading 🚀\n\nSend /settings to edit bot settings ⚙️\n\nSend /setname To Set Custom File Name 📛\n\nSend /zipaswd To Set Password For Zip File 🔐\n\nSend /unzipaswd To Set Password to Extract Archives 🔓\n\n⚠️ **You can ALWAYS SEND an image To Set it as THUMBNAIL for your files 🌄**",
-        quote=True,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "Instructions 📖",
-                        url="https://github.com/XronTrix10/Telegram-Leecher/wiki/INSTRUCTIONS",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(  # Opens a web URL
-                        "Channel 📣",
-                        url="https://t.me/Colab_Leecher",
-                    ),
-                    InlineKeyboardButton(  # Opens a web URL
-                        "Group 💬",
-                        url="https://t.me/Colab_Leecher_Discuss",
-                    ),
-                ],
-            ]
-        ),
-    )
     await sleep(15)
     await message_deleter(message, msg)
 
