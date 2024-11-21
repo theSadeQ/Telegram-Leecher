@@ -3,11 +3,13 @@
 
 import pytz
 import shutil
+import random
 import logging
 from time import time
-from datetime import datetime
 from asyncio import sleep
-from os import makedirs, path as ospath, system
+from pyrogram import enums
+from datetime import datetime
+from os import makedirs, path as ospath
 from colab_leecher import OWNER, colab_bot, DUMP_ID
 from colab_leecher.downlader.manager import calDownSize, get_d_name, downloadManager
 from colab_leecher.utility.helper import (
@@ -35,7 +37,6 @@ from colab_leecher.utility.variables import (
     BotTimes,
     Messages,
     Paths,
-    Aria2c,
     Transfer,
     TaskError,
 )
@@ -132,11 +133,6 @@ async def taskScheduler():
         makedirs(Paths.down_path)
     Messages.link_p = str(DUMP_ID)[4:]
 
-    try:
-        system(f"aria2c -d {Paths.WORK_PATH} -o Hero.jpg {Aria2c.pic_dwn_url}")
-    except Exception:
-        Paths.HERO_IMAGE = Paths.DEFAULT_HERO
-
     MSG.sent_msg = await colab_bot.send_message(chat_id=DUMP_ID, text=src_text[0])
 
     if len(src_text) > 1:
@@ -145,12 +141,12 @@ async def taskScheduler():
 
     Messages.src_link = f"https://t.me/c/{Messages.link_p}/{MSG.sent_msg.id}"
     Messages.task_msg += f"__[{BOT.Mode.type.capitalize()} {BOT.Mode.mode.capitalize()} as {BOT.Setting.stream_upload}]({Messages.src_link})__\n\n"
+    
+    await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.CANCEL)
 
-    await MSG.status_msg.delete()
-    img = Paths.THMB_PATH if ospath.exists(Paths.THMB_PATH) else Paths.HERO_IMAGE
     MSG.status_msg = await colab_bot.send_photo(  # type: ignore
         chat_id=OWNER,
-        photo=img,
+        photo=f"https://picsum.photos/id/{random.randint(1, 1010)}/900/600",
         caption=Messages.task_msg
         + Messages.status_head
         + f"\n📝 __Starting DOWNLOAD...__"
@@ -161,7 +157,9 @@ async def taskScheduler():
     await calDownSize(BOT.SOURCE)
 
     if not is_dir:
+        await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.PLAYING)
         await get_d_name(BOT.SOURCE[0])
+        await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.CANCEL)
     else:
         Messages.download_name = ospath.basename(BOT.SOURCE[0])
 

@@ -187,7 +187,7 @@ def thumbMaintainer(file_path):
         print(f"Thmb Gen ERROR: {e}")
         if ospath.exists(Paths.THMB_PATH):
             return Paths.THMB_PATH, 0
-        return Paths.HERO_IMAGE, 0
+        return Paths.DEFAULT_HERO, 0
 
 
 async def setThumbnail(message):

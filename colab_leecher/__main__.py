@@ -2,7 +2,7 @@
 
 
 import logging, os
-from pyrogram import filters
+from pyrogram import filters, enums
 from datetime import datetime
 from asyncio import sleep, get_event_loop
 from colab_leecher import colab_bot, OWNER
@@ -164,15 +164,9 @@ async def handle_options(client, callback_query):
             chat_id=callback_query.message.chat.id,
             message_ids=callback_query.message.reply_to_message_id,
         )
-        MSG.status_msg = await colab_bot.send_message(
-            chat_id=OWNER,
-            text="#STARTING_TASK\n\n**Starting your task in a few Seconds...🦐**",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("Cancel ❌", callback_data="cancel")],
-                ]
-            ),
-        )
+
+        await colab_bot.send_chat_action(chat_id=OWNER, action=enums.ChatAction.TYPING)
+
         BOT.State.task_going = True
         BOT.State.started = False
         BotTimes.start_time = datetime.now()
