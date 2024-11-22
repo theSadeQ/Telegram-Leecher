@@ -7,7 +7,7 @@ from pyrogram import filters
 from .utility.variables import BOT
 from colab_leecher import colab_bot, OWNER
 from .utility.task_manager import task_starter
-from .utility.helper import isLink, setThumbnail, message_deleter
+from .utility.helper import is_link_or_path, setThumbnail, message_deleter
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 # Handler functions
@@ -188,7 +188,7 @@ async def setPrefix(client, message):
         await message.delete()
 
 
-@colab_bot.on_message(filters.create(isLink) & ~filters.photo)
+@colab_bot.on_message(filters.create(is_link_or_path) & ~filters.photo)
 async def handle_url(client, message):
     global BOT
 

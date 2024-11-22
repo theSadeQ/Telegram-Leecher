@@ -23,16 +23,22 @@ from colab_leecher.utility.variables import (
 )
 
 
-def isLink(_, __, update):
+def is_link_or_path(_, __, update):
     if update.text:
-        if "/content/" in str(update.text) or "/home" in str(update.text):
-            return True
-        elif update.text.startswith("magnet:?xt=urn:btih:"):
+        # If the message was a magnet link
+        if update.text.startswith("magnet:?xt=urn:btih:"):
             return True
 
-        parsed = urlparse(update.text)
+        # If the message was a link
+        if update.text.startswith("https://") or update.text.startswith("http://"):
+            parsed = urlparse(update.text)
+            if parsed.scheme in ("http", "https") and parsed.netloc:
+                return True
+            else:
+                return False
 
-        if parsed.scheme in ("http", "https") and parsed.netloc:
+        # If the message was not a link, check if it was a file / folder path
+        if ospath.exists(update.text):
             return True
 
     return False
@@ -41,17 +47,22 @@ def isLink(_, __, update):
 def is_google_drive(link):
     return "drive.google.com" in link
 
+
 def is_mega(link):
     return "mega.nz" in link
+
 
 def is_terabox(link):
     return "terabox" in link or "1024tera" in link
 
+
 def is_ytdl_link(link):
     return "youtube.com" in link or "youtu.be" in link
 
+
 def is_telegram(link):
     return "t.me" in link
+
 
 def is_torrent(link):
     return "magnet" in link or "torrent" in link
@@ -195,7 +206,7 @@ async def setThumbnail(message):
         if ospath.exists(Paths.THMB_PATH):
             os.remove(Paths.THMB_PATH)
         event_loop = get_event_loop()
-        th_set = event_loop.create_task(message.download(file_name=Paths.THMB_PATH)) 
+        th_set = event_loop.create_task(message.download(file_name=Paths.THMB_PATH))
         await th_set
         BOT.Setting.thumbnail = True
         if BOT.State.task_going and MSG.status_msg:
@@ -288,7 +299,7 @@ def multipartArchive(path: str, type: str, remove: bool):
             na_p = name + ".z" + str(c).zfill(2)
             p_ap = ospath.join(dirname, na_p)
 
-        if rname.endswith(".zip"): # When the Archive was file.zip.001
+        if rname.endswith(".zip"):  # When the Archive was file.zip.001
             rname, _ = ospath.splitext(rname)
 
     return rname, size
