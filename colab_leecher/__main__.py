@@ -8,10 +8,10 @@ from .utility.variables import BOT
 from colab_leecher import colab_bot, OWNER
 from .utility.task_manager import task_starter
 from .utility.helper import is_link_or_path, setThumbnail, message_deleter
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 # Handler functions
 from .handlers import utils
+from .handlers.transload import handle_transload
 from .handlers.callbacks import handle_callbacks, set_prefix_suffix
 
 src_request_msg = None
@@ -137,6 +137,9 @@ async def setPrefix(client, message):
     await set_prefix_suffix(message)
 
 
+# ================== Transload Handlers =================
+
+
 @colab_bot.on_message(filters.command("tupload") & filters.private)
 async def telegram_upload(client, message):
     global BOT, src_request_msg
@@ -183,53 +186,9 @@ async def yt_upload(client, message):
 
 @colab_bot.on_message(filters.create(is_link_or_path) & ~filters.photo)
 async def handle_url(client, message):
-    global BOT
 
-    # Reset
-    BOT.Options.custom_name = ""
-    BOT.Options.zip_pswd = ""
-    BOT.Options.unzip_pswd = ""
-
-    if src_request_msg:
-        await src_request_msg.delete()
-    if BOT.State.task_going == False and BOT.State.started:
-        temp_source = message.text.splitlines()
-
-        # Check for arguments in message
-        for _ in range(3):
-            if temp_source[-1][0] == "[":
-                BOT.Options.custom_name = temp_source[-1][1:-1]
-                temp_source.pop()
-            elif temp_source[-1][0] == "{":
-                BOT.Options.zip_pswd = temp_source[-1][1:-1]
-                temp_source.pop()
-            elif temp_source[-1][0] == "(":
-                BOT.Options.unzip_pswd = temp_source[-1][1:-1]
-                temp_source.pop()
-            else:
-                break
-
-        BOT.SOURCE = temp_source
-        keyboard = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("Regular", callback_data="normal")],
-                [
-                    InlineKeyboardButton("Compress", callback_data="zip"),
-                    InlineKeyboardButton("Extract", callback_data="unzip"),
-                ],
-                [InlineKeyboardButton("UnDoubleZip", callback_data="undzip")],
-            ]
-        )
-        await message.reply_text(
-            text=f"<b>🐹 Select Type of {BOT.Mode.mode.capitalize()} You Want » </b>\n\nRegular:<i> Normal file upload</i>\nCompress:<i> Zip file upload</i>\nExtract:<i> extract before upload</i>\nUnDoubleZip:<i> Unzip then compress</i>",
-            reply_markup=keyboard,
-            quote=True,
-        )
-    elif BOT.State.started:
-        await message.delete()
-        await message.reply_text(
-            "<i>I am Already Working ! Please Wait Until I finish 😣!!</i>"
-        )
+    src_request_msg and await src_request_msg.delete()
+    await handle_transload(message)
 
 
 logging.info("Colab Leecher Started !")
