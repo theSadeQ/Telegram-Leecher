@@ -12,7 +12,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 # Handler functions
 from .handlers import utils
-from .handlers.callbacks import handle_callbacks
+from .handlers.callbacks import handle_callbacks, set_prefix_suffix
 
 src_request_msg = None
 
@@ -45,18 +45,23 @@ async def help_command(client, message):
 # sets thumbnail image
 @colab_bot.on_message(filters.photo & filters.private)
 async def handle_image(client, message):
-    msg = await message.reply_text("<i>Trying To Save Thumbnail...</i>")
+    msg = await message.reply_text(
+        "<i>Trying To Save Thumbnail...</i>", parse_mode="HTML"
+    )
     success = await setThumbnail(message)
     if success:
-        await msg.edit_text("**Thumbnail Successfully Changed ✅**")
+        await msg.edit_text(
+            "<b>Thumbnail Successfully Changed ✅</b>", parse_mode="HTML"
+        )
         await message.delete()
     else:
         await msg.edit_text(
-            "🥲 **Couldn't Set Thumbnail, Please Try Again !**", quote=True
+            "🥲 <b>Couldn't Set Thumbnail, Please Try Again !</b>",
+            quote=True,
+            parse_mode="HTML",
         )
     await sleep(15)
     await message_deleter(message, msg)
-
 
 
 # ================== Leech Utility Handlers =================
@@ -127,6 +132,11 @@ async def handle_options(client, callback_query):
     await handle_callbacks(callback_query)
 
 
+@colab_bot.on_message(filters.reply)
+async def setPrefix(client, message):
+    await set_prefix_suffix(message)
+
+
 @colab_bot.on_message(filters.command("tupload") & filters.private)
 async def telegram_upload(client, message):
     global BOT, src_request_msg
@@ -169,23 +179,6 @@ async def yt_upload(client, message):
     text = "<b>⚡ Send YTDL DOWNLOAD LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}</code>"
 
     src_request_msg = await task_starter(message, text)
-
-
-@colab_bot.on_message(filters.reply)
-async def setPrefix(client, message):
-    global BOT, SETTING
-    if BOT.State.prefix:
-        BOT.Setting.prefix = message.text
-        BOT.State.prefix = False
-
-        await utils.send_settings(message, message.reply_to_message_id, False)
-        await message.delete()
-    elif BOT.State.suffix:
-        BOT.Setting.suffix = message.text
-        BOT.State.suffix = False
-
-        await utils.send_settings(message, message.reply_to_message_id, False)
-        await message.delete()
 
 
 @colab_bot.on_message(filters.create(is_link_or_path) & ~filters.photo)

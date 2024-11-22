@@ -38,7 +38,7 @@ async def handle_callbacks(callback_query: CallbackQuery):
         await delete_thumbnail(callback_query)
 
     elif callback_query.data in ["set-prefix", "set-suffix"]:
-        await set_prefix_suffix(callback_query)
+        await prefix_suffix_setter(callback_query)
 
     elif callback_query.data in ["split-true", "split-false"]:
         await video_split_option(callback_query)
@@ -202,7 +202,7 @@ async def delete_thumbnail(callback_query: CallbackQuery):
     await utils.send_settings(callback_query.message, callback_query.message.id, False)
 
 
-async def set_prefix_suffix(callback_query: CallbackQuery):
+async def prefix_suffix_setter(callback_query: CallbackQuery):
     global BOT
 
     if callback_query.data == "set-prefix":
@@ -215,6 +215,23 @@ async def set_prefix_suffix(callback_query: CallbackQuery):
             "Send a Text to Set as SUFFIX by REPLYING THIS MESSAGE »"
         )
         BOT.State.suffix = True
+
+
+async def set_prefix_suffix(message):
+    global BOT
+
+    if BOT.State.prefix:
+        BOT.Setting.prefix = message.text
+        BOT.State.prefix = False
+
+        await utils.send_settings(message, message.reply_to_message_id, False)
+        await message.delete()
+    elif BOT.State.suffix:
+        BOT.Setting.suffix = message.text
+        BOT.State.suffix = False
+
+        await utils.send_settings(message, message.reply_to_message_id, False)
+        await message.delete()
 
 
 async def video_split_option(callback_query: CallbackQuery):
