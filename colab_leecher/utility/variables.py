@@ -5,6 +5,15 @@ from time import time
 from datetime import datetime
 from pyrogram.types import Message
 
+captions = {
+    "Monospace": "code",
+    "Regular": "p",
+    "Bold": "b",
+    "Italic": "i",
+    "Underlined": "u",
+    "Quote": "blockquote",
+}
+
 
 class BOT:
     SOURCE = []
