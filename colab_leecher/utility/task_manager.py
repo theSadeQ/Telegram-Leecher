@@ -50,7 +50,7 @@ async def task_starter(message, text):
         return src_request_msg
     else:
         msg = await message.reply_text(
-            "I am already working ! Please wait until I finish !!"
+            "**I’m already on it! Wait up while I wrap this up!! 💯🔥**"
         )
         await sleep(15)
         await msg.delete()
