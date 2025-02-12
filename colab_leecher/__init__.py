@@ -20,5 +20,4 @@ logging.basicConfig(level=logging.INFO)
 install()
 
 colab_bot = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-# Add this line to define BOT
-BOT = colab_bot
+
