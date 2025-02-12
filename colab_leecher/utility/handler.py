@@ -40,8 +40,14 @@ from colab_leecher.utility.helper import (
 
 async def Leech(folder_path: str, remove: bool):
     global BOT, BotTimes, Messages, Paths, Transfer
+    
+    # List files in the folder
     files = [str(p) for p in pathlib.Path(folder_path).glob("**/*") if p.is_file()]
+    logging.info(f"Files listed: {files}")
+    
+    # First pass to handle video conversion
     for f in natsorted(files):
+        logging.info(f"Processing file: {f}")
         file_path = ospath.join(folder_path, f)
 
         # Converting Video Files
@@ -50,20 +56,25 @@ async def Leech(folder_path: str, remove: bool):
 
     Transfer.total_down_size = getSize(folder_path)
 
+    # Second pass to handle file splitting and uploading
     files = [str(p) for p in pathlib.Path(folder_path).glob("**/*") if p.is_file()]
+    logging.info(f"Files listed after second pass: {files}")
+    
     for f in natsorted(files):
+        logging.info(f"Processing file: {f}")
         file_path = ospath.join(folder_path, f)
 
         leech = await sizeChecker(file_path, remove)
 
         if leech:  # File was splitted
+            logging.info(f"Leech detected for {file_path}")
             if ospath.exists(file_path) and remove:
                 os.remove(file_path)  # Delete original Big Zip file
 
             dir_list = natsorted(os.listdir(Paths.temp_zpath))
+            logging.info(f"Files in temp_zpath: {dir_list}")
 
             count = 1
-
             for dir_path in dir_list:
                 short_path = ospath.join(Paths.temp_zpath, dir_path)
                 file_name = ospath.basename(short_path)
@@ -83,13 +94,12 @@ async def Leech(folder_path: str, remove: bool):
                     logging.info(d)
                 await upload_file(new_path, file_name)
                 Transfer.up_bytes.append(os.stat(new_path).st_size)
-
                 count += 1
 
             shutil.rmtree(Paths.temp_zpath)
 
         else:
-            if not ospath.exists(Paths.temp_files_dir): # Create Directory
+            if not ospath.exists(Paths.temp_files_dir):  # Create Directory
                 makedirs(Paths.temp_files_dir)
 
             if not remove:  # Copy To Temp Dir for Renaming Purposes
@@ -99,9 +109,7 @@ async def Leech(folder_path: str, remove: bool):
             new_path = shortFileName(file_path)
             os.rename(file_path, new_path)
             BotTimes.current_time = time()
-            Messages.status_head = (
-                f"<b>📤 UPLOADING » </b>\n\n<code>{file_name}</code>\n"
-            )
+            Messages.status_head = f"<b>📤 UPLOADING » </b>\n\n<code>{file_name}</code>\n"
             try:
                 MSG.status_msg = await MSG.status_msg.edit_text(
                     text=Messages.task_msg
