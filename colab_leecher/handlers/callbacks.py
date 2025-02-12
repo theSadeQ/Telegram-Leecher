@@ -254,10 +254,11 @@ async def video_convert_options(callback_query: CallbackQuery):
         "Yes" if callback_query.data == "convert-true" else "No"
     )
     await callback_query.answer(
-        f"✅ Videos will {"" if BOT.Options.convert_video else "not"} be converted to MP4/MKV",
+        f"✅ Videos will {'' if BOT.Options.convert_video else 'not'} be converted to MP4/MKV",
         show_alert=True,
     )
     await utils.send_settings(callback_query.message, callback_query.message.id, False)
+
 
 
 async def video_quality_options(callback_query: CallbackQuery):
