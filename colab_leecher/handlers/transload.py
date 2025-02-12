@@ -1,6 +1,6 @@
 # copyright 2024 © Xron Trix | https://github.com/XronTrix10
 
-from colab_leecher import BOT, MSG
+from colab_leecher.utility.variables import BOT, MSG
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
