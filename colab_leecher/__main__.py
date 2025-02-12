@@ -19,15 +19,15 @@ src_request_msg = None
 @colab_bot.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     await message.delete()
-    text = "**Hey There, 👋🏼 It's Colab Leecher**\n\n◲ I am a Powerful File Transloading Bot 🚀\n◲ I can Transfer Files To Telegram or Your Google Drive From Various Sources 🦐"
+    text = "**Yo! 👋🏼 It's Colab Leecher**\n\n◲ the illest bot to move files to Telegram or Google Drive 🚀\n◲ fast and clean—let me do the dirty work! 🦐"
     keyboard = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    "Repository 🦄",
-                    url="https://github.com/XronTrix10/Telegram-Leecher",
+                    "Repository 📦",
+                    url="https://github.com/thesadeq/Telegram-Leecher",
                 ),
-                InlineKeyboardButton("Support 💝", url="https://t.me/Colab_Leecher"),
+                InlineKeyboardButton("In SadeQ We 💝", url="https://realmadrid.com"),
             ],
         ]
     )
@@ -40,7 +40,7 @@ async def telegram_upload(client, message):
     BOT.Mode.mode = "leech"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Send Me DOWNLOAD LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
+    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n🦀 Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -51,7 +51,7 @@ async def drive_upload(client, message):
     BOT.Mode.mode = "mirror"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Send Me DOWNLOAD LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
+    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n🦀 Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -62,7 +62,7 @@ async def directory_upload(client, message):
     BOT.Mode.mode = "dir-leech"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Send Me FOLDER PATH 🔗»</b>\n\n🦀 Below is an example\n\n<code>/home/user/Downloads/bot</code>"
+    text = "<b>⚡ Yo, Send Me THAT FOLDER PATH 🔗»</b>🦀 Check the example below, and let’s get it rollin’!<code>/home/user/Downloads/bot 🚀</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -73,7 +73,7 @@ async def yt_upload(client, message):
     BOT.Mode.mode = "leech"
     BOT.Mode.ytdl = True
 
-    text = "<b>⚡ Send YTDL DOWNLOAD LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}</code>"
+    text = "<b>⚡ Yo, Send Me YTDL LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern and let’s get it!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -149,7 +149,7 @@ async def handle_url(client, message):
     elif BOT.State.started:
         await message.delete()
         await message.reply_text(
-            "<i>I am Already Working ! Please Wait Until I finish 😣!!</i>"
+            "<i>🚨 I'm already grindin'! Hold tight 'til I'm done 😣💪!</i>"
         )
 
 
@@ -166,7 +166,7 @@ async def handle_options(client, callback_query):
         )
         MSG.status_msg = await colab_bot.send_message(
             chat_id=OWNER,
-            text="#STARTING_TASK\n\n**Starting your task in a few Seconds...🦐**",
+            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🦐🔥**",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("Cancel ❌", callback_data="cancel")],
@@ -335,7 +335,7 @@ async def handle_options(client, callback_query):
         )
         MSG.status_msg = await colab_bot.send_message(
             chat_id=OWNER,
-            text="#STARTING_TASK\n\n**Starting your task in a few Seconds...🦐**",
+            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🦐🔥**",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("Cancel ❌", callback_data="cancel")],
@@ -364,7 +364,7 @@ async def handle_image(client, message):
         await message.delete()
     else:
         await msg.edit_text(
-            "🥲 **Couldn't Set Thumbnail, Please Try Again !**", quote=True
+            "🥲 **Ayy, couldn’t set the thumbnail... Try again real quick! 💀**", quote=True
         )
     await sleep(15)
     await message_deleter(message, msg)
@@ -439,11 +439,11 @@ async def help_command(client, message):
                 ],
                 [
                     InlineKeyboardButton(  # Opens a web URL
-                        "Channel 📣",
+                        "Main Channel 📣",
                         url="https://t.me/Colab_Leecher",
                     ),
                     InlineKeyboardButton(  # Opens a web URL
-                        "Group 💬",
+                        "Repo's Group 💬",
                         url="https://t.me/Colab_Leecher_Discuss",
                     ),
                 ],
