@@ -108,6 +108,7 @@ def fileType(file_path: str):
         ".mpeg4": "video",
         ".vob": "video",
         ".m4v": "video",
+        ".wav": "video",
         ".mp3": "audio",
         ".wav": "audio",
         ".flac": "audio",
