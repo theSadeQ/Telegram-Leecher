@@ -1,6 +1,5 @@
 # copyright 2023 © Xron Trix | https://github.com/Xrontrix10
 
-
 import os
 import shutil
 import logging
@@ -26,6 +25,7 @@ from colab_leecher.utility.converters import (
     extract,
     videoConverter,
     sizeChecker,
+    sizeUnit,
 )
 from colab_leecher.utility.helper import (
     fileType,
@@ -33,7 +33,6 @@ from colab_leecher.utility.helper import (
     getTime,
     keyboard,
     shortFileName,
-    sizeUnit,
     sysINFO,
 )
 
@@ -52,7 +51,9 @@ async def Leech(folder_path: str, remove: bool):
 
         # Converting Video Files
         if BOT.Options.convert_video and fileType(file_path) == "video":
+            logging.info(f"Video file detected: {file_path}. Starting conversion.")
             file_path = await videoConverter(file_path)
+            logging.info(f"Video conversion complete for: {file_path}")
 
     Transfer.total_down_size = getSize(folder_path)
 
@@ -65,8 +66,9 @@ async def Leech(folder_path: str, remove: bool):
         file_path = ospath.join(folder_path, f)
 
         leech = await sizeChecker(file_path, remove)
-
-        if leech:  # File was splitted
+        
+        # Checking if file was split
+        if leech:  # File was split
             logging.info(f"Leech detected for {file_path}")
             if ospath.exists(file_path) and remove:
                 os.remove(file_path)  # Delete original Big Zip file
@@ -137,6 +139,7 @@ async def Leech(folder_path: str, remove: bool):
         shutil.rmtree(Paths.thumbnail_ytdl)
     if ospath.exists(Paths.temp_files_dir):
         shutil.rmtree(Paths.temp_files_dir)
+
 
 
 async def Zip_Handler(down_path: str, is_split: bool, remove: bool):
