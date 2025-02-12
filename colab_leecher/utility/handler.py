@@ -133,12 +133,12 @@ async def Leech(folder_path: str, remove: bool):
                 for file in os.listdir(Paths.temp_files_dir):
                     os.remove(ospath.join(Paths.temp_files_dir, file))
 
-    if remove and ospath.exists(folder_path):
-        shutil.rmtree(folder_path)
-    if ospath.exists(Paths.thumbnail_ytdl):
-        shutil.rmtree(Paths.thumbnail_ytdl)
-    if ospath.exists(Paths.temp_files_dir):
-        shutil.rmtree(Paths.temp_files_dir)
+   # if remove and ospath.exists(folder_path):
+   #     shutil.rmtree(folder_path)
+   # if ospath.exists(Paths.thumbnail_ytdl):
+   #     shutil.rmtree(Paths.thumbnail_ytdl)
+   # if ospath.exists(Paths.temp_files_dir):
+    #    shutil.rmtree(Paths.temp_files_dir)
 
 
 
