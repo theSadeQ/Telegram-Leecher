@@ -214,11 +214,11 @@ async def cancelTask(Reason: str):
                     [
                         [
                             InlineKeyboardButton(  # Opens a web URL
-                                "Channel 📣",
+                                "Repo's Channel 📣",
                                 url="https://t.me/Colab_Leecher",
                             ),
                             InlineKeyboardButton(  # Opens a web URL
-                                "Group 💬",
+                                "Repo's Group 💬",
                                 url="https://t.me/Colab_Leecher_Discuss",
                             ),
                         ],
