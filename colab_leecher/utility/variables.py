@@ -88,7 +88,7 @@ class Paths:
 
 
 class Messages:
-    caution_msg = "\n\n<i>💖 When I'm Doin This, Do Something Else ! <b>Because, Time Is Precious ✨</b></i>"
+    caution_msg = "\n\n<i>💖 ¡Hala Madrid!...y nada más ✨</b></i>"
     download_name = ""
     task_msg = ""
     status_head = f"<b>📥 DOWNLOADING » </b>\n"
@@ -105,7 +105,7 @@ class MSG:
 
 class Aria2c:
     link_info = False
-    pic_dwn_url = "https://picsum.photos/900/600"
+    pic_dwn_url = "https://simp6.jpg5.su/images3/imageholderclb40faa082e08c8bf.jpg"
 
 
 class Gdrive:
