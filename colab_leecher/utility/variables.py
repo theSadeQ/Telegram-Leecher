@@ -105,7 +105,7 @@ class MSG:
 
 class Aria2c:
     link_info = False
-    pic_dwn_url = "https://simp6.jpg5.su/images3/imageholderclb40faa082e08c8bf.jpg"
+    pic_dwn_url = "https://simp6.jpg5.su/images3/Untitled-design-2e8ac6e9e72173608.jpg"
 
 
 class Gdrive:
