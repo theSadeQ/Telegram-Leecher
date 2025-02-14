@@ -3,6 +3,9 @@ import json
 from uvloop import install
 from pyrogram.client import Client
 
+# Install uvloop to optimize asyncio
+install()
+
 # Read credentials from the JSON file
 def load_credentials(file_path):
     with open(file_path, "r") as file:
@@ -34,3 +37,4 @@ def main():
 # Run the bot
 if __name__ == "__main__":
     colab_bot = main()
+    colab_bot.run()  # Start the bot
