@@ -229,19 +229,19 @@ def convertIMG(image_path):
     os.remove(image_path)
     return output_path
 
+##
+#def sysINFO():
+    #ram_usage = psutil.Process(os.getpid()).memory_info().rss
+    #disk_usage = psutil.disk_usage("/")
+    #cpu_usage_percent = psutil.cpu_percent()
 
-def sysINFO():
-    ram_usage = psutil.Process(os.getpid()).memory_info().rss
-    disk_usage = psutil.disk_usage("/")
-    cpu_usage_percent = psutil.cpu_percent()
+    #string = "\n\n⌬─────「 Colab Usage 」─────⌬\n"
+   # string += f"\n╭🖥️ **CPU Usage »**  __{cpu_usage_percent}%__"
+    #string += f"\n├💽 **RAM Usage »**  __{sizeUnit(ram_usage)}__"
+   # string += f"\n╰💾 **DISK Free »**  __{sizeUnit(disk_usage.free)}__"
+    #string += Messages.caution_msg
 
-    string = "\n\n⌬─────「 Colab Usage 」─────⌬\n"
-    string += f"\n╭🖥️ **CPU Usage »**  __{cpu_usage_percent}%__"
-    string += f"\n├💽 **RAM Usage »**  __{sizeUnit(ram_usage)}__"
-    string += f"\n╰💾 **DISK Free »**  __{sizeUnit(disk_usage.free)}__"
-    string += Messages.caution_msg
-
-    return string
+    #return string
 
 
 def multipartArchive(path: str, type: str, remove: bool):
