@@ -1,348 +1,226 @@
-# copyright 2023 © Xron Trix | https://github.com/Xrontrix10
-
-
 import os
-import json
-import GPUtil
+import re
 import shutil
 import logging
-import subprocess
-from asyncio import sleep
-from threading import Thread
-from datetime import datetime
-from os import makedirs, path as ospath
-from moviepy.editor import VideoFileClip as VideoClip
-from colab_leecher.utility.variables import BOT, MSG, BotTimes, Paths, Messages
-from colab_leecher.utility.helper import (
-    getSize,
-    fileType,
-    keyboard,
-    multipartArchive,
-    sizeUnit,
-    speedETA,
-    status_bar,
-    sysINFO,
-    getTime,
-)
+import zipfile
+import tarfile
+import rarfile  # Ensure rarfile is installed: pip install rarfile
+from py7zr import SevenZipFile, is_7zfile  # Ensure py7zr is installed: pip install py7zr
+from natsort import natsorted
+from colab_leecher.utility.variables import BOT, Paths
+from colab_leecher.utility.helper import fileType, videoExtFix
+from subprocess import run, PIPE, STDOUT
 
 
-async def videoConverter(file: str):
-    global BOT, MSG, BotTimes
+def splitArchive(input_file: str, part_size: int = 524288000):  # Default to 500 MB parts.
+    """Splits a file (zip or otherwise) into multiple parts.
+    Uses 7z for splitting as it is more reliable.
+    """
+    if not os.path.exists(input_file):
+        logging.error(f"Input file does not exist: {input_file}")
+        return
 
-    def convert_to_mp4(input_file, out_file):
-        clip = VideoClip(input_file)
-        clip.write_videofile(
-            out_file,
-            codec="libx264",
-            audio_codec="aac",
-            ffmpeg_params=["-strict", "-2"],
-        )
+    file_name = os.path.basename(input_file)
+    file_dir = os.path.dirname(input_file)
+    base_name, _ = os.path.splitext(file_name)
+    output_dir = os.path.join(file_dir, f"{base_name}_parts")  # Subdirectory for parts
+    os.makedirs(output_dir, exist_ok=True)
 
-    async def msg_updater(c: int, tr, engine: str):
-        global Messages
-        messg = f"╭「" + "░" * c + "█" + "░" * (11 - c) + "」"
-        messg += f"\n├⏳ **Status »** __Running 🏃🏼‍♂️__\n├🕹 **Attempt »** __{tr}__"
-        messg += f"\n├⚙️ **Engine »** __{engine}__\n├💪🏼 **Handler »** __{core}__"
-        messg += f"\n╰🍃 **Time Spent »** __{getTime((datetime.now() - BotTimes.start_time).seconds)}__"
-        try:
-            await MSG.status_msg.edit_text(
-                text=Messages.task_msg + mtext + messg + sysINFO(),
-                reply_markup=keyboard(),
-            )
-        except Exception:
-            pass
+    # Use 7z command-line for splitting
+    command = [
+        "7z",
+        "a",  # Add to archive
+        "-v" + sizeUnit(part_size),  # Volume size (e.g., "500m")
+        "-mx0",  # No compression (store only) for speed
+        os.path.join(output_dir, f"{base_name}.7z"),
+        input_file,
+    ]
+    process = run(command, stdout=PIPE, stderr=STDOUT, text=True, cwd=file_dir) # added cwd so 7z can run in the same directory as the file
+    if process.returncode != 0:
+        logging.error(f"7z splitting failed:\n{process.stdout}")
+        return None  # Or raise an exception if you prefer
 
-    name, ext = ospath.splitext(file)
-
-    if ext.lower() in [".mkv", ".mp4"]:
-        return file  # Return if It's already mp4 / mkv file
-
-    c, out_file, Err = 0, f"{name}.{BOT.Options.video_out}", False
-    gpu = len(GPUtil.getAvailable())
-
-    quality = "-preset slow -qp 0" if BOT.Options.convert_quality else ""
-
-    # ignored = "-hwaccel cuvid -c:v h264_cuvid"
-    if gpu == 1:
-        cmd = f"ffmpeg -y -i '{file}' {quality} -c:v h264_nvenc -c:a copy '{out_file}'"
-        core = "GPU"
-    else:
-        cmd = f"ffmpeg -y -i '{file}' {quality} -c:v libx264 -c:a copy '{out_file}'"
-        core = "CPU"
-
-    mtext = f"<b>🎥 Converting Video »</b>\n\n{ospath.basename(file)}\n\n"
-
-    proc = subprocess.Popen(cmd, shell=True)
-
-    while proc.poll() is None:
-        await msg_updater(c, "1st", "FFmpeg 🏍")
-        c = (c + 1) % 12
-        await sleep(3)
-
-    if ospath.exists(out_file) and getSize(out_file) == 0:
-        os.remove(out_file)
-        Err = True
-    elif not ospath.exists(out_file):
-        Err = True
-
-    if Err:
-        proc = Thread(target=convert_to_mp4, name="Moviepy", args=(file, out_file))
-        proc.start()
-        core = "CPU"
-        while proc.is_alive():  # Until ytdl is downloading
-            await msg_updater(c, "2nd", "Moviepy 🛵")
-            c = (c + 1) % 12
-            await sleep(3)
-
-    if ospath.exists(out_file) and getSize(out_file) == 0:
-        os.remove(out_file)
-        Err = True
-    elif not ospath.exists(out_file):
-        Err = True
-    else:
-        Err = False
-
-    if Err:
-        logging.error("This Video Can't Be Converted !")
-        return file
-    else:
-        os.remove(file)
-        return out_file
+    logging.info(f"File split into parts in: {output_dir}")
+    return output_dir #return the output dir
 
 
-async def sizeChecker(file_path, remove: bool):
-    global Paths
-    max_size = 2097152000  # 2 GB
-    file_size = os.stat(file_path).st_size
 
-    if file_size > max_size:
-        if not ospath.exists(Paths.temp_zpath):
-            makedirs(Paths.temp_zpath)
-        _, filename = ospath.split(file_path)
-        filename = filename.lower()
-        if (
-            filename.endswith(".zip")
-            or filename.endswith(".rar")
-            or filename.endswith(".7z")
-            or filename.endswith(".tar")
-            or filename.endswith(".gz")
-        ):
-            await splitArchive(file_path, max_size)
-        else:
-            f_type = fileType(file_path)
-            if f_type == "video" and BOT.Options.is_split:
-                # TODO: Store the size in a constant variable
-                await splitVideo(file_path, 1800, remove)
-            else:
-                await archive(file_path, True, remove)
-            await sleep(2)
-        return True
-    else:
-        return False
+def archive(dir_path: str, is_split: bool, remove: bool):
+    """Archives files in a folder, optionally splitting the archive."""
 
+    if not os.path.exists(dir_path):
+        logging.error(f"Directory does not exist: {dir_path}")
+        return
 
-async def archive(path, is_split, remove: bool):
-    global BOT, Messages
-    dir_p, p_name = ospath.split(path)
-    r = "-r" if ospath.isdir(path) else ""
+    if not os.listdir(dir_path):
+        logging.error(f"Directory is empty: {dir_path}")
+        return
+
+    dir_name = os.path.basename(dir_path)
+    zip_path = os.path.join(Paths.temp_zpath, f"{dir_name}.zip")
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED, allowZip64=True) as zf:
+        for dirname, _, files in os.walk(dir_path):
+            for file in natsorted(files):
+                file_path = os.path.join(dirname, file)
+                rel_path = os.path.relpath(file_path, dir_path)  # Path relative to the directory being zipped
+                zf.write(file_path, rel_path)  # Use the *relative* path inside the zip
+
+    if remove:
+        shutil.rmtree(dir_path)  # Remove the original directory
+
     if is_split:
-        split = "-s 1800m" if len(BOT.Options.zip_pswd) == 0 else "-v1800m"
-    else:
-        split = ""
-    if len(BOT.Options.custom_name) != 0:
-        name = BOT.Options.custom_name
-    elif ospath.isfile(path):
-        name = ospath.basename(path)
-    else:
-        name = Messages.download_name
-    Messages.status_head = f"<b>🔐 ZIPPING » </b>\n\n<code>{name}</code>\n"
-    Messages.download_name = f"{name}.zip"
-    BotTimes.task_start = datetime.now()
-
-    if len(BOT.Options.zip_pswd) == 0:
-        cmd = f'cd "{dir_p}" && zip {r} {split} -0 "{Paths.temp_zpath}/{name}.zip" "{p_name}"'
-    else:
-        cmd = f'7z a -mx=0 -tzip -p{BOT.Options.zip_pswd} {split} "{Paths.temp_zpath}/{name}.zip" {path}'
-    proc = subprocess.Popen(cmd, shell=True)
-    total_size = getSize(path)
-    total_in_unit = sizeUnit(total_size)
-    while proc.poll() is None:
-        speed_string, eta, percentage = speedETA(
-            BotTimes.task_start, getSize(Paths.temp_zpath), total_size
-        )
-        await status_bar(
-            Messages.status_head,
-            speed_string,
-            percentage,
-            getTime(eta),
-            sizeUnit(getSize(Paths.temp_zpath)),
-            total_in_unit,
-            "Xr-Zipp 🔒",
-        )
-        await sleep(1)
-
-    if remove:
-        if ospath.isfile(path):
-            os.remove(path)
-        else:
-            shutil.rmtree(path)
+        #split_file(zip_path, var.LEECH_SPLIT_SIZE)
+        splitArchive(zip_path, BOT.LEECH.SPLIT_SIZE) #changed to split using 7z
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
 
 
-async def extract(zip_filepath, remove: bool):
-    global BOT, Paths, Messages
-    _, filename = ospath.split(zip_filepath)
-    Messages.status_head = f"<b>📂 EXTRACTING »</b>\n\n<code>{filename}</code>\n"
-    p = f"-p{BOT.Options.unzip_pswd}" if len(BOT.Options.unzip_pswd) != 0 else ""
-    name, ext = ospath.splitext(filename)
-    file_pattern, real_name, temp_unzip_path, total_ = (
-        "",
-        name,
-        Paths.temp_unzip_path,
-        0,
-    )
-    if ext == ".rar":
-        if "part" in name:
-            cmd = f"unrar x -kb -idq {p} '{zip_filepath}' {temp_unzip_path}"
-            file_pattern = "rar"
-        else:
-            cmd = f"unrar x {p} '{zip_filepath}' {temp_unzip_path}"
+def extract(file_path: str, remove: bool = False):
+    """Extracts various archive types (zip, rar, tar, 7z) to a designated directory."""
+    if not os.path.exists(file_path):
+        logging.error(f"File does not exist: {file_path}")
+        return False, None
 
-    elif ext == ".tar":
-        cmd = f"tar -xvf '{zip_filepath}' -C {temp_unzip_path}"
-    elif ext == ".gz":
-        cmd = f"tar -zxvf '{zip_filepath}' -C {temp_unzip_path}"
-    else:
-        cmd = f"7z x {p} '{zip_filepath}' -o{temp_unzip_path}"
-        if ext == ".001":
-            file_pattern = "7z"
-        elif ext == ".z01":
-            file_pattern = "zip"
+    file_name = os.path.basename(file_path)
+    extract_path = Paths.temp_unzip_path  # Consistent extraction path
+    # Determine archive type and extract
 
-    if file_pattern == "":
-        total_ = getSize(zip_filepath)
-        total = sizeUnit(total_)
-    else:
-        real_name, total_ = multipartArchive(zip_filepath, file_pattern, False)
-        total = sizeUnit(total_)
-
-    BotTimes.task_start = datetime.now()
-
-    proc = subprocess.Popen(cmd, shell=True)
-
-    while proc.poll() is None:
-        speed_string, eta, percentage = speedETA(
-            BotTimes.task_start,
-            getSize(temp_unzip_path),
-            total_,
-        )
-        await status_bar(
-            Messages.status_head,
-            speed_string,
-            percentage,
-            getTime(eta),
-            sizeUnit(getSize(temp_unzip_path)),
-            total,
-            "Xr-Unzip 🔓",
-        )
-        await sleep(1)
-
-    if remove:
-        multipartArchive(zip_filepath, file_pattern, True)
-
-        if ospath.exists(zip_filepath):
-            os.remove(zip_filepath)
-
-    Messages.download_name = real_name
-
-
-async def splitArchive(file_path, max_size):
-    global Paths, BOT, MSG, Messages
-    _, filename = ospath.split(file_path)
-    new_path = f"{Paths.temp_zpath}/{filename}"
-    Messages.status_head = f"<b>✂️ SPLITTING » </b>\n\n<code>{filename}</code>\n"
-    # Get the total size of the file
-    total_size = ospath.getsize(file_path)
-
-    BotTimes.task_start = datetime.now()
-
-    with open(file_path, "rb") as f:
-        chunk = f.read(max_size)
-        i = 1
-        bytes_written = 0
-        while chunk:
-            # Generate filename for this chunk
-            ext = str(i).zfill(3)
-            output_filename = "{}.{}".format(new_path, ext)
-
-            # Write chunk to file
-            with open(output_filename, "wb") as out:
-                out.write(chunk)
-
-            bytes_written += len(chunk)
-            speed_string, eta, percentage = speedETA(
-                BotTimes.task_start, bytes_written, total_size
-            )
-            await status_bar(
-                Messages.status_head,
-                speed_string,
-                percentage,
-                getTime(eta),
-                sizeUnit(bytes_written),
-                sizeUnit(total_size),
-                "Xr-Split ✂️",
-            )
-            # Get next chunk
-            chunk = f.read(max_size)
-            i += 1  # Increment chunk counter
-
-
-async def splitVideo(file_path, max_size, remove: bool):
-    global Paths, BOT, MSG, Messages
-    _, filename = ospath.split(file_path)
-    just_name, extension = ospath.splitext(filename)
-
-    # FFmpeg command to get video information in JSON format
-    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", file_path]
-
-    bitrate = None
     try:
-        # Run the command and get output
-        output = subprocess.check_output(cmd)
-        video_info = json.loads(output)
-        # Get bitrate in bits per second
-        bitrate = float(video_info["format"]["bit_rate"])
-    except subprocess.CalledProcessError:
-        logging.error("Error: Could not get video bitrate")
-        bitrate = 1000
+        if file_name.endswith(".zip"):
+            with zipfile.ZipFile(file_path, "r") as zip_ref:
+                zip_ref.extractall(extract_path)
+        elif file_name.endswith((".tar.gz", ".tgz", ".tar")):
+            with tarfile.open(file_path, "r") as tar_ref:
+                # Safe extraction (handling absolute paths and "..")
+                def is_within_directory(directory, target):
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+                    return prefix == abs_directory
 
-    # Convert target size from MB to bits
-    target_size_bits = max_size * 8 * 1024 * 1024
+                for member in tar_ref.getmembers():
+                    member_path = os.path.join(extract_path, member.name)
+                    if not is_within_directory(extract_path, member_path):
+                        logging.warning(f"Skipping unsafe tar entry: {member.name}")
+                        continue
+                    tar_ref.extract(member, extract_path)
 
-    # Calculate duration in seconds
-    duration = int(target_size_bits / bitrate)
+        elif file_name.endswith(".rar"):
+            try:
+                with rarfile.RarFile(file_path, "r") as rar_ref:
+                    rar_ref.extractall(extract_path)
+            except rarfile.NeedFirstVolume:  # Handle multi-part RAR
+                logging.warning(f"Multi-part RAR detected, attempting extraction: {file_name}")
+                try:
+                    command = ["unrar", "x", file_path, extract_path]
+                    process = run(command, stdout=PIPE, stderr=STDOUT, text=True)
+                    if process.returncode != 0:
+                        logging.error(f"unrar extraction failed: {process.stdout}")
+                        return False, None # Return None if error occurred
+                except FileNotFoundError:
+                    logging.error("unrar command not found. Please install unrar (e.g., apt install unrar).")
+                    return False, None
+        elif is_7zfile(file_path):
+            with SevenZipFile(file_path, mode="r") as seven_z:
+                seven_z.extractall(extract_path)
 
-    cmd = f'ffmpeg -i {file_path} -c copy -f segment -segment_time {duration} -reset_timestamps 1 "{Paths.temp_zpath}/{just_name}.part%03d{extension}"'
+        else:
+            logging.warning(f"Unsupported archive format: {file_name}")
+            return False, None # Indicate failure
 
-    Messages.status_head = f"<b>✂️ SPLITTING » </b>\n\n<code>{filename}</code>\n"
-    BotTimes.task_start = datetime.now()
 
-    proc = subprocess.Popen(cmd, shell=True)
-    total_size = getSize(file_path)
-    total_in_unit = sizeUnit(total_size)
-    while proc.poll() is None:
-        speed_string, eta, percentage = speedETA(
-            BotTimes.task_start, getSize(Paths.temp_zpath), total_size
-        )
-        await status_bar(
-            Messages.status_head,
-            speed_string,
-            percentage,
-            getTime(eta),
-            sizeUnit(getSize(Paths.temp_zpath)),
-            total_in_unit,
-            "Xr-Split ✂️",
-        )
-        await sleep(1)
+    except Exception as e:
+        logging.exception(f"Error during extraction of {file_name}: {e}")
+        return False, None
 
     if remove:
         os.remove(file_path)
+
+    logging.info(f"Extracted {file_name} to {extract_path}")
+    return True, extract_path
+
+def sizeChecker(file_path: str, remove: bool) -> bool:
+    """Checks if the file size exceeds the split size.
+       Returns `True` if the file needed to be split/zipped, `False` otherwise.
+    """
+    if os.path.getsize(file_path) > BOT.LEECH.SPLIT_SIZE:
+        file_name = os.path.basename(file_path)
+        base_name, ext = os.path.splitext(file_name)
+
+        if BOT.Options.equal_splits:
+            logging.info(f"Splitting: {file_name}...")
+            dir_path = splitArchive(file_path, BOT.LEECH.SPLIT_SIZE) # split with 7z
+
+        else: #.zip and split
+            dir_path = os.path.join(os.path.dirname(file_path), base_name)
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+            shutil.move(file_path, os.path.join(dir_path, file_name))
+            logging.info(f"Zipping and Splitting: {file_name}...")
+            archive(dir_path, is_split=True, remove=remove)
+
+        return True  # Indicates that splitting/zipping occurred
+
+    else:
+        return False # No split
+
+def sizeUnit(size):
+    B = 1024
+    KB = B * 1024
+    MB = KB * 1024
+    GB = MB * 1024
+    TB = GB * 1024
+    if size >= TB:
+        size = str(round(size / TB, 2)) + 'T'
+    elif size >= GB:
+        size = str(round(size / GB, 2)) + 'G'
+    elif size >= MB:
+        size = str(round(size / MB, 2)) + 'M'
+    elif size >= KB:
+        size = str(round(size / KB, 2)) + 'K'
+    else :
+        size = str(round(size, 2)) + 'B'
+    return size
+
+async def videoConverter(file_path: str):
+    output_path = file_path + ".converted.mp4"  # Use a consistent, temporary name
+    try:
+        if fileType(file_path) == 'vid':
+            if not file_path.lower().endswith(".mp4"):
+                command = [
+                "ffmpeg",
+                "-i", file_path,
+                "-c:v", "libx264",      # H.264 video codec (widely compatible)
+                "-preset", "medium",    # Encoding speed/quality tradeoff
+                "-crf", "23",          # Constant Rate Factor (quality, lower=better, 18-28 is a good range)
+                "-c:a", "aac",        # AAC audio codec
+                "-b:a", "128k",        # Audio bitrate
+                "-movflags", "+faststart",  # Optimize for streaming
+                output_path,
+                "-y", # Overwrite output
+                ]
+
+                process = run(command, stdout=PIPE, stderr=STDOUT, text=True)
+
+                if process.returncode != 0:
+                    logging.error(f"ffmpeg conversion failed:\n{process.stdout}")
+                    return file_path  # Return original file on failure
+
+                if os.path.exists(output_path):
+                    os.remove(file_path)  # Remove the original file
+                    videoExtFix(os.path.dirname(output_path)) # Rename to mp4
+                    return  os.path.splitext(output_path)[0] + ".mp4"  # Return the converted file path
+                else:
+                    logging.error(f"ffmpeg conversion failed: Output file not found: {output_path}")
+                    return file_path
+
+            else: # already mp4
+                return file_path
+
+    except FileNotFoundError:
+        logging.error("ffmpeg not found.  Please ensure ffmpeg is installed and in your system's PATH.")
+        return file_path # Return original
+    except Exception as e:
+        logging.exception(f"Error during video conversion: {e}")
+        return file_path  # Return original if error
