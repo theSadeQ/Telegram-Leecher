@@ -5,7 +5,24 @@ import urllib.parse
 import re
 import logging
 
-# --- DeltaLeech (filename extraction and cleaning) ---
+
+def write_failed_downloads_to_file(failed_downloads, downloader_name, download_directory):
+    """Writes the list of failed URLs and their corresponding filenames (or extracted names) to a text file."""
+    if not failed_downloads:
+        return  # Nothing to write
+
+    file_path = os.path.join(download_directory, f"failed_downloads_{downloader_name}.txt")
+    try:
+        with open(file_path, "w") as f:
+            for url in failed_downloads:
+                # Try to extract a filename; use a placeholder if it fails
+                file_name = extract_filename_from_url(url) or "unknown_filename"
+                f.write(f"{url}, {file_name}\n")
+        logging.info(f"List of failed {downloader_name} downloads saved to: {file_path}")
+    except Exception as e:
+        logging.error(f"Error writing failed downloads to file: {e}")
+
+
 
 def clean_filename(filename):
     """Cleans filenames by removing/replacing invalid characters."""
@@ -77,34 +94,15 @@ def download_file_deltaleech(url, file_name, cf_clearance, download_directory):
 
     return True  # Indicate success
 
-def write_failed_downloads_to_file(failed_downloads, downloader_name, download_directory):
-    """Writes the list of failed URLs and their corresponding filenames (or extracted names) to a text file."""
-    if not failed_downloads:
-        return  # Nothing to write
 
-    file_path = os.path.join(download_directory, f"failed_downloads_{downloader_name}.txt")
-    try:
-        with open(file_path, "w") as f:
-            for url in failed_downloads:
-                # Try to extract a filename; use a placeholder if it fails
-                file_name = extract_filename_from_url(url) or "unknown_filename"
-                f.write(f"{url}, {file_name}\n")
-        logging.info(f"List of failed {downloader_name} downloads saved to: {file_path}")
-    except Exception as e:
-        logging.error(f"Error writing failed downloads to file: {e}")
-
-
-def download_multiple_files_deltaleech(url_template, variable_segments, file_names, cf_clearance, download_directory):
-    """Downloads multiple files from DeltaLeech, handling potential errors.
-       Now accepts a URL template and list of variable segments.
-    """
-    if len(variable_segments) != len(file_names):
-        logging.error("Error: The number of variable segments and filenames must match! 📏")
+def download_multiple_files_deltaleech(urls, file_names, cf_clearance, download_directory):
+    """Downloads multiple files from DeltaLeech, handling potential errors."""
+    if len(urls) != len(file_names):
+        logging.error("Error: The number of URLs and filenames must match! 📏")
         return
 
     failed_downloads = []
-    for variable_segment, file_name in zip(variable_segments, file_names):
-        url = url_template.format(variable_segment) # Construct full URL
+    for url, file_name in zip(urls, file_names):
         if not download_file_deltaleech(url, file_name, cf_clearance, download_directory):
             failed_downloads.append(url)
 
