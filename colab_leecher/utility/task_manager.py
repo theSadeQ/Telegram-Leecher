@@ -1,5 +1,3 @@
-# copyright 2023 © Xron Trix | https://github.com/Xrontrix10
-
 import asyncio
 import os
 import logging
@@ -10,11 +8,11 @@ from colab_leecher.downlader import (
     ytdl,
     nzbcloud,
     deltaleech,
-    bitso
+    bitso # Import bitso
 )
 
 from colab_leecher.utility.handler import Leech, Unzip_Handler, Zip_Handler, SendLogs, cancelTask
-from colab_leecher.utility.helper import is_google_drive, is_mega, is_telegram, is_valid_url, is_magnet, is_ytdl
+from colab_leecher.utility.helper import is_google_drive, is_mega, is_telegram, is_valid_url, is_magnet, is_ytdl, is_bitso
 from colab_leecher.utility.variables import (
     BOT,
     MSG,
@@ -70,6 +68,8 @@ async def downloadManager(
             downloader_type = "telegram"
         elif is_ytdl(link):
             downloader_type = "ytdl"
+        elif is_bitso(link): # Check for Bitso URL
+            downloader_type = "bitso"
         elif is_valid_url(link) or is_magnet(link):
             downloader_type = "direct"
         else:
@@ -136,6 +136,24 @@ async def downloadManager(
                 )
             )
             await BOT.TASK
+
+        case "bitso": # Bitso case added
+            await dummy_message.reply_text(
+                f"Bitso download started... Please be patient. ⏳\n\n**{Messages.download_name}**"
+            )
+            # Bitso requires special handling for cookies and referer
+            BOT.TASK = asyncio.create_task(
+                bitso.download_multiple_files_bitso(
+                    urls = [url.strip() for url in message.text.splitlines() if url.strip()], # Pass list of URLs
+                    file_names = filenames, # Filenames handled below
+                    download_directory=Paths.DOWNLOAD_PATH,
+                    referer_url=BOT.COOKIES.referer, # Pass referer from bot settings
+                    _identity_value=BOT.COOKIES._identity, # Pass _identity
+                    phpsessid_value=BOT.COOKIES.PHPSESSID # Pass PHPSESSID
+                )
+            )
+            await BOT.TASK
+
         case _:
             await message.reply_text("Unsupported download type. 🚫")
             BOT.State.task_going = False
@@ -186,7 +204,7 @@ async def taskScheduler(client, message):
         return
     if BOT.State.task_going:
         await message.reply_text(
-            text=f"A task is already in progress. Please wait. ⏳\n\n<b>Details:</b>\n• __File:__ `{Messages.download_name}`\n• __Mode:__ `{BOT.Mode.mode}`\n\nUse /cancel to stop current task."
+            text=f"A task is already in progress. Please wait. ⏳\n\n<b>Details:</b>\n• __File:__ `{Messages.download_name}`\n• __Mode:__ `{BOT.Mode.mode}`\n\nUse /cancel to stop the current task."
         )
         return
 
@@ -204,98 +222,3 @@ async def taskScheduler(client, message):
         text=f"Processing your request... Please wait. ⏳", quote=True
     )
     MSG.sent_msg = sent_message  # Store for later updates
-
-    # --- Determine Leech/Upload Mode ---
-    is_leech = False
-    if message.text.startswith(("/urlleech", "/gdupload", "/ttupleech")):
-        is_leech = True
-
-    # --- URL Template Logic ---
-    if message.text.startswith("url_template:"):
-        BOT.State.waiting_for_input = False  # No longer waiting
-        lines = message.text.splitlines()
-        # Extract url_template, segments, filenames
-        try:
-            url_template = lines[0].split(":", 1)[1].strip()
-            variable_segments_line = lines[1].split(":", 1)[1].strip()
-            variable_segments = [seg.strip() for seg in variable_segments_line.split(",")]
-
-            try:
-                filenames_line = lines[2].split(":", 1)[1].strip()
-                filenames = [fname.strip() for fname in filenames_line.split(",")]
-            except:
-                filenames = None # No filenames given
-
-            referer = None # Add this line
-            try: #check if user gives referer
-                referer_line = lines[3].split(":", 1)[1].strip()
-                referer = referer_line
-            except:
-                pass
-            # Check for custom filenames in square brackets
-            if filenames: # Check user inputs filenames or not
-                for i, fname in enumerate(filenames):
-                    if fname.startswith('[') and fname.endswith(']'):
-                        filenames[i] = fname[1:-1]  # Remove brackets
-
-            BOT.Mode.mode = "Leech" if is_leech else "Upload"
-            Messages.download_name = filenames[0] if filenames else "Multiple Files"
-            Messages.src_link = url_template
-
-            # Call downloadManager with URL template information
-            await downloadManager(
-                client,
-                sent_message,
-                message,
-                is_leech,
-                url_template,
-                variable_segments,
-                filenames,
-                referer
-            )
-
-        except Exception as e:
-            await message.reply_text(f"Error processing input: {e} ❌")
-            BOT.State.task_going = False
-            return
-
-    else:
-        # --- Regular Download/Leech (No Template) ---
-        BOT.State.waiting_for_input = False  # No longer waiting for input
-        Messages.download_name = (
-            message.text.split("/")[-1]
-            if is_leech
-            else os.path.basename(message.text)
-        )
-        Messages.src_link = message.text
-        BOT.Mode.mode = "Leech" if is_leech else "Upload"
-
-        await downloadManager(client, sent_message, message, is_leech)
-
-
-async def task_starter(client, message):
-    global BOT, MSG, BotTimes, Messages, Paths, Transfer
-
-    if BOT.State.task_going:
-        await message.reply_text(
-            text=f"A task is already in progress. Please wait. ⏳\n\n<b>Details:</b>\n• __File:__ `{Messages.download_name}`\n• __Mode:__ `{BOT.Mode.mode}`\n\nUse /cancel to stop the current task."
-        )
-    elif message.text.startswith(("/urlleech", "/gdupload", "/tupload")):
-        BOT.State.waiting_for_input = True
-        await message.reply_text(
-            "Send your download details in this format:\n\n"
-            "`url_template: URL_TEMPLATE`\n"
-            "`segments: SEGMENT1,SEGMENT2,...`\n"
-            "`filenames: FILE1,FILE2,...` (optional)\n"
-            "`cf_clearance: YOUR_CF_CLEARANCE_COOKIE` (optional)\n"
-            "`referer: REFERER_URL` (optional)\n\n"
-             "Or send a single direct download/magnet/telegram link."
-            , quote=True
-        )
-    else:
-        await taskScheduler(client, message)
-
-
-async def rclone_upload():
-    if BOT.RCLONE.enabled:
-        from colab_leecher.remote.rclone
