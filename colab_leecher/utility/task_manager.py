@@ -1,3 +1,8 @@
+# copyright 2023 © Xron Trix | https://github.com/Xrontrix10
+
+import asyncio
+import os
+import logging
 from colab_leecher.utility import variables as var
 from colab_leecher.utility import helper
 from colab_leecher.utility.handler import Leech, Unzip_Handler, Zip_Handler, SendLogs, cancelTask
@@ -5,10 +10,7 @@ from colab_leecher.utility.converters import splitArchive
 from colab_leecher.downlader.manager import downloadManager, get_d_name, calDownSize
 from colab_leecher.uploader.telegram import upload_file
 from telethon.tl.types import DocumentAttributeFilename
-import os
 import time
-import asyncio
-import logging
 from colab_leecher.downlader import (
     gdrive,
     mega,
@@ -221,140 +223,4 @@ async def downloadManager(
         elif BOT.Mode.undoublezip:
             await Unzip_Handler(Paths.DOWNLOAD_PATH, remove)
             await Zip_Handler(Paths.temp_unzip_path, BOT.LEECH.IS_SPLIT, True)
-            if BOT.LEECH.IS_SPLIT:
-              await Leech(Paths.temp_zpath, True)  # Leech Split Zip
-            else:
-              await Leech(Paths.temp_zpath, remove) # leech single zip
-        elif is_leech:
-            if not BOT.Options.rclone_upload:
-              await Leech(Paths.DOWNLOAD_PATH, remove)
-        if BOT.Options.rclone_upload: # Rclone
-            rc = await rclone_upload()
-            if rc == False: # rclone Failed
-                if BOT.Mode.compress:
-                   await Leech(Paths.temp_zpath, True)
-                elif BOT.Mode.extract:
-                   await Leech(Paths.temp_unzip_path, True)
-                else:
-                    await Leech(Paths.DOWNLOAD_PATH, True)
-    await SendLogs(is_leech)
-
-
-async def taskScheduler(client, message):
-    global BOT, MSG, BotTimes, Messages, Paths, Transfer
-    if message.text == "/cancel":
-        if BOT.State.task_going:
-            await cancelTask("Cancelled by User")
-        else:
-            await message.reply_text(text="No task to cancel. 🤷")
-        return
-    if BOT.State.task_going:
-        await message.reply_text(
-            text=f"A task is already in progress. Please wait. ⏳\n\n<b>Details:</b>\n• __File:__ `{Messages.download_name}`\n• __Mode:__ `{BOT.Mode.mode}`\n\nUse /cancel to stop the current task."
-        )
-        return
-
-    BotTimes.start_time = message.date
-    BOT.State.task_going = True
-
-    # --- Prepare Directories ---
-    if not os.path.exists(Paths.DOWNLOAD_PATH):
-        os.makedirs(Paths.DOWNLOAD_PATH)
-    if not os.path.exists(Paths.UPLOADS_PATH):
-        os.makedirs(Paths.UPLOADS_PATH)
-
-    # --- Initial Message to User ---
-    sent_message = await message.reply_text(
-        text=f"Processing your request... Please wait. ⏳", quote=True
-    )
-    MSG.sent_msg = sent_message  # Store for later updates
-
-    # --- Determine Leech/Upload Mode ---
-    is_leech = False
-    if message.text.startswith(("/urlleech", "/gdupload", "/ttupleech")):
-        is_leech = True
-
-    # --- URL Template Logic ---
-    if message.text.startswith("url_template:"):
-        BOT.State.waiting_for_input = False  # No longer waiting
-        lines = message.text.splitlines()
-        # Extract url_template, segments, filenames
-        try:
-            url_template = lines[0].split(":", 1)[1].strip()
-            variable_segments_line = lines[1].split(":", 1)[1].strip()
-            variable_segments = [seg.strip() for seg in variable_segments_line.split(",")]
-
-            try:
-                filenames_line = lines[2].split(":", 1)[1].strip()
-                filenames = [fname.strip() for fname in filenames_line.split(",")]
-            except:
-                filenames = None # No filenames given
-
-            referer = None # Add this line
-            try: #check if user gives referer
-                referer_line = lines[3].split(":", 1)[1].strip()
-                referer = referer_line
-            except:
-                pass
-            # Check for custom filenames in square brackets
-            if filenames: # Check user inputs filenames or not
-                for i, fname in enumerate(filenames):
-                    if fname.startswith('[') and fname.endswith(']'):
-                        filenames[i] = fname[1:-1]  # Remove brackets
-
-            BOT.Mode.mode = "Leech" if is_leech else "Upload"
-            Messages.download_name = filenames[0] if filenames else "Multiple Files"
-            Messages.src_link = url_template
-
-            # Call downloadManager with URL template information
-            await downloadManager(
-                client,
-                sent_message,
-                message,
-                is_leech,
-                url_template,
-                variable_segments,
-                filenames,
-                referer
-            )
-
-        except Exception as e:
-            await message.reply_text(f"Error processing input: {e} ❌")
-            BOT.State.task_going = False
-            return
-
-    else:
-        # --- Regular Download/Leech (No Template) ---
-        BOT.State.waiting_for_input = False  # No longer waiting for input
-        Messages.download_name = (
-            message.text.split("/")[-1]
-            if is_leech
-            else os.path.basename(message.text)
-        )
-        Messages.src_link = message.text
-        BOT.Mode.mode = "Leech" if is_leech else "Upload"
-
-        await downloadManager(client, sent_message, message, is_leech)
-
-
-async def task_starter(client, message):
-    global BOT, MSG, BotTimes, Messages, Paths, Transfer
-
-    if BOT.State.task_going:
-        await message.reply_text(
-            text=f"A task is already in progress. Please wait. ⏳\n\n<b>Details:</b>\n• __File:__ `{Messages.download_name}`\n• __Mode:__ `{BOT.Mode.mode}`\n\nUse /cancel to stop the current task."
-        )
-    elif message.text.startswith(("/urlleech", "/gdupload", "/tupload")):
-        BOT.State.waiting_for_input = True
-        await message.reply_text(
-            "Send your download details in this format:\n\n"
-            "`url_template: URL_TEMPLATE`\n"
-            "`segments: SEGMENT1,SEGMENT2,...`\n"
-            "`filenames: FILE1,FILE2,...` (optional)\n"
-            "`cf_clearance: YOUR_CF_CLEARANCE_COOKIE` (optional)\n"
-            "`referer: REFERER_URL` (optional)\n\n"
-             "Or send a single direct download/magnet/telegram link."
-            , quote=True
-        )
-    else:
-        await taskScheduler(client, message)
+            if BOT.LEECH.IS
