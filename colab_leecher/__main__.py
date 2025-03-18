@@ -6,7 +6,7 @@ import os
 import sys
 from pyrogram import Client
 from colab_leecher.utility.variables import BOT, Var
-from colab_leecher.utility.task_manager import task_starter
+from colab_leecher.utility.task_manager import task_starter, bitso_task_handler # Import bitso_task_handler
 
 # --- Logging Configuration ---
 logging.basicConfig(
@@ -53,6 +53,8 @@ async def on_message(client, message):
         or message.text == "/tupload"
     ):
         await task_starter(client, message)
+    elif message.text == "/bitsodl": # New Bitso command
+        await bitso_task_handler(client, message)
     elif BOT.State.waiting_for_input:
         await task_starter(client, message)  # Pass message to task_manager
     elif message.text == "/cancel":
