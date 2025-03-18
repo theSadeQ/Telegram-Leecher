@@ -1,135 +1,204 @@
-from pyrogram import Client, filters, idle
-from pyrogram.handlers import MessageHandler, CallbackQueryHandler
-import logging
+import re
+import os
+import time
+import psutil
+import shutil
 from colab_leecher.utility import variables as var
-from colab_leecher.utility import helper
-from colab_leecher.utility.task_manager import task_starter
-import json
+from moviepy.editor import VideoFileClip
+from PIL import Image
+from natsort import natsorted
+from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.errors import FloodWait
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
-LOG = logging.getLogger(__name__)
+#——Checking URL Types——
+def isLink(message: Message):
+    regex = r'[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)'
+    if re.match(regex, message):
+        return True
+    else:
+        return False
 
-# Load credentials from the JSON file
-with open('credentials.json', 'r') as f:
-    credentials = json.load(f)
-API_ID = credentials['API_ID']
-API_HASH = credentials['API_HASH']
-BOT_TOKEN = credentials['BOT_TOKEN']
-USER_ID = credentials['USER_ID']
-DUMP_ID = credentials['DUMP_ID']
+def is_google_drive(url):
+    return "drive.google.com" in url or "docs.google.com" in url
 
-# Set bot variables
-var.BOT.BOT_ID = int(USER_ID)
-var.BOT.DUMP_ID = int(DUMP_ID)
-var.BOT.BOT_TOKEN = BOT_TOKEN
+def is_mega(url):
+    return "mega.nz" in url or "mega.co.nz" in url
 
+def is_terabox(url):
+    return "terabox" in url
 
-colab_bot = Client("colab_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=2)
+def is_ytdl_link(url):
+    return "youtube.com" in url or "youtu.be" in url or "vimeo" in url \
+           or "facebook.com" in url or "fb.watch" in url or "dailymotion.com" in url
 
+def is_telegram(url):
+    return "t.me" in url
 
-#——Start Message——
-async def start_message(client, message):
-    buttons = await helper.start_buttons()
-    await message.reply(text=var.Messages.START_MSG, reply_markup=buttons, quote=True, disable_web_page_preview=True)
+def is_torrent(url):
+    return url.endswith(".torrent")
 
-#——Help Message——
-async def help_message(client, message):
-    await message.reply(text=var.Messages.HELP_MSG, quote=True, disable_web_page_preview=True)
+#——Calculating Time, Size, Percentage——
+def getTime(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    tmp = ((str(days) + "d, ") if days else "") + \
+        ((str(hours) + "h, ") if hours else "") + \
+        ((str(minutes) + "m, ") if minutes else "") + \
+        ((str(seconds) + "s, ") if seconds else "")
+    return tmp[:-2]
 
-#——Uploading files from Telegram File/Media——
-async def upload_from_telegram(client, message):
-     await task_starter(colab_bot, message)
+def sizeUnit(size):
+    B = 1024
+    KB = B * 1024
+    MB = KB * 1024
+    GB = MB * 1024
+    TB = GB * 1024
+    if size >= TB:
+        size = str(round(size / TB, 2)) + ' TB'
+    elif size >= GB:
+        size = str(round(size / GB, 2)) + ' GB'
+    elif size >= MB:
+        size = str(round(size / MB, 2)) + ' MB'
+    elif size >= KB:
+        size = str(round(size / KB, 2)) + ' KB'
+    else :
+        size = str(round(size, 2)) + ' B'
+    return size
 
-#——Uploading files from URL——
-async def upload_from_url(client, message):
-    await task_starter(colab_bot, message)
+def fileType(filename):
+    if filename.endswith(('.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm')):
+        return 'vid'
+    elif filename.endswith(('.mp3', '.wav', '.aac', '.ogg', '.flac', '.m4a')):
+        return 'aud'
+    elif filename.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')):
+        return 'img'
+    else:
+        return 'doc'
 
-#——Uploading files from Google Drive URL——
-async def gdrive_upload_from_url(client, message):
-    await task_starter(colab_bot, message)
+def shortFileName(filename):
+    name, _ = filename.rsplit(".", 1)
+    shorted_name = name[:15] + "..." + name[-5:] + "." + _
+    return shorted_name
 
-#——Uploading files from Direct URL——
-async def direct_upload_from_url(client, message):
-    await task_starter(colab_bot, message)
+def getSize(directory):
+    size = 0
+    for filename in os.listdir(directory):
+        filepath = os.path.join(directory, filename)
+        size += os.path.getsize(filepath)
+    return size
 
-#——Uploading files from yt-dlp supported sites——
-async def ytdl_upload_from_url(client, message):
-    await task_starter(colab_bot, message, leech=False)
+def videoExtFix(directory):
+    for filename in os.listdir(directory):
+        filepath = os.path.join(directory, filename)
+        if filename.endswith((".mkv", ".webm", ".avi")):
+            _ , ext = filename.rsplit(".", 1)
+            new_filepath = filepath.replace("." + ext, ".mp4")
+            os.rename(filepath, new_filepath)
+            filepath = new_filepath
+        thumbMaintainer(filepath) # generate thumbnail
 
-#——Leeching files from Telegram File/Media——
-async def leech_from_telegram(client, message):
-    await task_starter(colab_bot, message, leech=True)
+def thumbMaintainer(filepath):
+    if fileType(filepath) == "vid":
+        try:
+            clip = VideoFileClip(filepath)
+            duration = int(clip.duration)
+            thumbnail = clip.save_frame(var.Paths.THUMB_PATH, t=((duration - 5) if duration > 5 else 0)) # capture thumbnail
+            clip.close()
+        except Exception as e:
+            pass
 
-#——Leeching files from URL——
-async def leech_from_url(client, message):
-   await task_starter(colab_bot, message, leech=True)
+def setThumbnail(filepath):
+    try:
+        img = Image.open(filepath)
+        img.convert("RGB").save(var.Paths.THUMB_PATH, "JPEG")
+    except Exception as e:
+        pass
 
-#——Unzipping files——
-async def unzip_from_telegram(client, message):
-    await task_starter(colab_bot, message, unzip=True)
+def isYtdlComplete(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith((".ytdl", ".part")):
+            return False
+        else:
+            return True
 
-#——Unzipping files from URL——
-async def unzip_from_url(client, message):
-    await task_starter(colab_bot, message, unzip=True)
+def convertIMG(img_path, format="jpg"):
+    try:
+        img = Image.open(img_path)
+        img_rgb = img.convert("RGB")
+        file_name, _ = os.path.basename(img_path).rsplit('.', 1)
+        new_path = var.BOT_THUMB_DIR + file_name + f'.{format}'
+        img_rgb.save(new_path, format)
+        img.close()
+        os.remove(img_path)
+        return new_path
+    except Exception as e:
+        print(e)
+        return img_path
 
-#——Callback Query Handler (Settings)——
-async def settings_handler(client, call):
-    await helper.send_settings(call.from_user.id, call.data, call.message.id)
+def sysINFO():
+    cpu = str(round(psutil.cpu_percent(), 2)) + "%"
+    ram = str(round(psutil.virtual_memory().percent, 2)) + "%"
+    total, used, free = shutil.disk_usage(var.DOWNLOAD_DIR)
+    total = sizeUnit(total)
+    used = sizeUnit(used)
+    free = sizeUnit(free)
+    disk = f"{used} / {total}"
 
-async def set_rename_prefix(client, message):
-    if  message.text.startswith("/"):
-        return
-    var.BOT.RENAME_PREFIX = message.text
-    await message.reply(var.Messages.NAME_SET, quote=True)
+    return f"CPU: {cpu}\nRAM: {ram}\nDisk: {disk}"
 
-async def set_zip_password(client, message):
-    if  message.text.startswith("/"):
-        return
-    var.BOT.ZIP_PASSWORD = message.text
-    await message.reply(var.Messages.ZIP_ASWD_SET, quote=True)
+def multipartArchive(path):
+    size = 0
+    parts = natsorted(os.listdir(path))
+    size = sum(os.path.getsize(os.path.join(path, file)) for file in parts)
+    return size, parts
 
-async def set_unzip_password(client, message):
-    if  message.text.startswith("/"):
-        return
-    var.BOT.UNZIP_PASSWORD = message.text
-    await message.reply(var.Messages.UNZIP_ASWD_SET, quote=True)
+def isTimeOver(time_stamp):
+    time_now = time.time()
+    if (time_now - time_stamp) >= 10:
+        return True
+    else:
+        return False
+#——Messages——
+async def message_deleter(message, sleep_time=1):
+  try:
+    if sleep_time:
+        await asyncio.sleep(sleep_time)
+    await message.delete()
 
+  except Exception as e:
+    print(e)
+    pass
 
-#——Handlers——
-colab_bot.add_handler(MessageHandler(start_message, filters.command(["start"]) & filters.private))
+async def send_settings(user_id, query=None, message_id=None):
+    buttons = await settings_buttons()
+    text = var.Messages.SETTINGS
+    try:
+        if query == "close":
+           return await colab_bot.edit_message_reply_markup(user_id, message_id)
+        elif query == "refresh":
+            return await colab_bot.edit_message_text(user_id, message_id, text=text, reply_markup=buttons, disable_web_page_preview=True)
+        else:
+            return await colab_bot.send_message(user_id, text, reply_markup=buttons, disable_web_page_preview=True)
+    except FloodWait as e:
+        await asyncio.sleep(e.x)
+    except Exception as e:
+        LOG.error(e)
+        pass
 
-colab_bot.add_handler(MessageHandler(help_message, filters.command(["help"]) & filters.private))
+async def start_buttons():
+    markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(text="⚙️ Settings", callback_data="setting_set"),
+                InlineKeyboardButton(text="Close ❌", callback_data="setting_close")
+            ],
+        ]
+    )
+    return markup
 
-colab_bot.add_handler(MessageHandler(ytdl_upload_from_url, filters.command(["ytupload"]) & filters.private))
-
-colab_bot.add_handler(MessageHandler(upload_from_telegram, filters.command(["tupload"]) & filters.private & filters.regex(pattern=".*(https://t.me/.*)")))
-
-colab_bot.add_handler(MessageHandler(gdrive_upload_from_url, filters.command(["gdupload"]) & filters.private & filters.regex(pattern=".*(drive.google.com|docs.google.com)")))
-
-colab_bot.add_handler(MessageHandler(direct_upload_from_url, filters.command(["drupload"]) & filters.private))
-
-colab_bot.add_handler(MessageHandler(leech_from_telegram, filters.command(["tleech"]) & filters.private & filters.regex(pattern=".*(https://t.me/.*)")))
-
-colab_bot.add_handler(MessageHandler(unzip_from_telegram, filters.command(["t রাখি "]) & filters.private & filters.regex(pattern=".*(https://t.me/.*)")))
-
-colab_bot.add_handler(MessageHandler(unzip_from_url, filters.command(["urlunzip"]) & filters.private))
-
-colab_bot.add_handler(MessageHandler(set_rename_prefix, filters.command(["setname"]) & filters.private))
-
-colab_bot.add_handler(MessageHandler(set_zip_password, filters.command(["zipaswd"]) & filters.private))
-
-colab_bot.add_handler(MessageHandler(set_unzip_password, filters.command(["unzipaswd"]) & filters.private))
-
-colab_bot.add_handler(CallbackQueryHandler(settings_handler, filters.regex('^setting')))
-# Main handler for /tupload (handles both direct URLs and templates now)
-colab_bot.add_handler(MessageHandler(upload_from_url, filters.command(["tupload"]) & filters.private))
-colab_bot.add_handler(MessageHandler(leech_from_url, filters.command(["urlleech"]) & filters.private))
-#——Handlers——
-colab_bot.add_handler(MessageHandler(upload_from_telegram, filters.private & (filters.document | filters.video | filters.audio | filters.photo)))
-
-print("Bot Started")
-colab_bot.run()
+async def settings_buttons():
+    buttons = [
+        [
+            InlineKeyboardButton(text=("✅ Enabled" if var.BOT.USE_THUMB else "❌ Disabled"), callback_data="setting_thumb"),
+            InlineKeyboardButton(text="🖼️ Custom Thumbnail", callback_data="setting_cthumb")
