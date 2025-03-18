@@ -1,6 +1,5 @@
 # copyright 2023 © Xron Trix | https://github.com/Xrontrix10
 
-
 import os
 import shutil
 import logging
@@ -35,6 +34,8 @@ from colab_leecher.utility.helper import (
     shortFileName,
     sizeUnit,
     sysINFO,
+    thumbMaintainer,  # Import the function
+    videoExtFix
 )
 
 
@@ -45,7 +46,7 @@ async def Leech(folder_path: str, remove: bool):
         file_path = ospath.join(folder_path, f)
 
         # Converting Video Files
-        if BOT.Options.convert_video and fileType(file_path) == "video":
+        if BOT.Options.convert_video and fileType(file_path) == "vid":
             file_path = await videoConverter(file_path)
 
     Transfer.total_down_size = getSize(folder_path)
@@ -129,6 +130,7 @@ async def Leech(folder_path: str, remove: bool):
         shutil.rmtree(Paths.thumbnail_ytdl)
     if ospath.exists(Paths.temp_files_dir):
         shutil.rmtree(Paths.temp_files_dir)
+
 
 
 async def Zip_Handler(down_path: str, is_split: bool, remove: bool):
