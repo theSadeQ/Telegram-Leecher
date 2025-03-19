@@ -1,6 +1,3 @@
-# copyright 2024 © Xron Trix | https://github.com/Xrontrix10
-
-
 import pytz
 import shutil
 import logging
@@ -68,7 +65,7 @@ async def taskScheduler():
     )
     # Reset Texts
     Messages.download_name = ""
-    Messages.task_msg = f"<b>🦞 TASK MODE » </b>"
+    Messages.task_msg = f"<b> TASK MODE » </b>"
     Messages.dump_task = (
         Messages.task_msg
         + f"<i>{BOT.Mode.type.capitalize()} {BOT.Mode.mode.capitalize()} as {BOT.Setting.stream_upload}</i>\n\n<b>🖇️ SOURCES » </b>"
