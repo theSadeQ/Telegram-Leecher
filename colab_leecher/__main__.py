@@ -1,6 +1,3 @@
-# copyright 2024 © Xron Trix | https://github.com/Xrontrix10
-
-
 import logging, os
 from pyrogram import filters
 from datetime import datetime
@@ -19,7 +16,7 @@ src_request_msg = None
 @colab_bot.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     await message.delete()
-    text = "**Yo! 👋🏼 It's Colab Leecher**\n\n◲ the illest bot to move files to Telegram or Google Drive 🚀\n◲ fast and clean—let me do the dirty work! 🦐"
+    text = "**Yo! 👋🏼 It's Colab Leecher**\n\n◲ the illest bot to move files to Telegram or Google Drive 🚀\n◲ fast and clean—let me do the dirty work! "
     keyboard = InlineKeyboardMarkup(
         [
             [
@@ -40,7 +37,7 @@ async def telegram_upload(client, message):
     BOT.Mode.mode = "leech"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n🦀 Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
+    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -51,7 +48,7 @@ async def drive_upload(client, message):
     BOT.Mode.mode = "mirror"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n🦀 Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
+    text = "<b>⚡ Yo, Send Me THEM LINK(s) 🔗»</b>\n\n Ayo, follow the flow, Let’s get them files pronto, let’s go!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mkv\n[Custom name space.mp4]\n{Password for zipping}\n(Password for unzip)</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -62,7 +59,7 @@ async def directory_upload(client, message):
     BOT.Mode.mode = "dir-leech"
     BOT.Mode.ytdl = False
 
-    text = "<b>⚡ Yo, Send Me THAT FOLDER PATH 🔗»</b>🦀 Check the example below, and let’s get it rollin’!<code>/home/user/Downloads/bot 🚀</code>"
+    text = "<b>⚡ Yo, Send Me THAT FOLDER PATH 🔗»</b> Check the example below, and let’s get it rollin’!<code>/home/user/Downloads/bot 🚀</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -73,7 +70,7 @@ async def yt_upload(client, message):
     BOT.Mode.mode = "leech"
     BOT.Mode.ytdl = True
 
-    text = "<b>⚡ Yo, Send Me YTDL LINK(s) 🔗»</b>\n\n🦀 Follow the below pattern and let’s get it!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}</code>"
+    text = "<b>⚡ Yo, Send Me YTDL LINK(s) 🔗»</b>\n\n Follow the below pattern and let’s get it!\n\n<code>https//linktofile1.mp4\nhttps//linktofile2.mp4\n[Custom name space.mp4]\n{Password for zipping}</code>"
 
     src_request_msg = await task_starter(message, text)
 
@@ -142,7 +139,7 @@ async def handle_url(client, message):
             ]
         )
         await message.reply_text(
-            text=f"<b>🐹 Select Type of {BOT.Mode.mode.capitalize()} You Want » </b>\n\nRegular:<i> Normal file upload</i>\nCompress:<i> Zip file upload</i>\nExtract:<i> extract before upload</i>\nUnDoubleZip:<i> Unzip then compress</i>",
+            text=f"<b> Select Type of {BOT.Mode.mode.capitalize()} You Want » </b>\n\nRegular:<i> Normal file upload</i>\nCompress:<i> Zip file upload</i>\nExtract:<i> extract before upload</i>\nUnDoubleZip:<i> Unzip then compress</i>",
             reply_markup=keyboard,
             quote=True,
         )
@@ -166,7 +163,7 @@ async def handle_options(client, callback_query):
         )
         MSG.status_msg = await colab_bot.send_message(
             chat_id=OWNER,
-            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🦐🔥**",
+            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🔥**",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("Cancel ❌", callback_data="cancel")],
@@ -335,7 +332,7 @@ async def handle_options(client, callback_query):
         )
         MSG.status_msg = await colab_bot.send_message(
             chat_id=OWNER,
-            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🦐🔥**",
+            text="#STARTING_TASK\n\n**Task kickin' off in a few... just a sec 🔥**",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("Cancel ❌", callback_data="cancel")],
