@@ -1,6 +1,3 @@
-# Some codes and idea were taken from https://github.com/Itz-fork/Mega.nz-Bot/tree/nightly | Thanks to  https://github.com/Itz-fork
-# So, I can't take the entire credit for this module
-
 import subprocess, logging
 from datetime import datetime
 from colab_leecher.utility.helper import status_bar, getTime
@@ -54,5 +51,5 @@ async def pro_for_mega(stream, process):
         eta,
         downloaded_size,
         total_size,
-        "Meg 😡",
+        "Mega",
     )
