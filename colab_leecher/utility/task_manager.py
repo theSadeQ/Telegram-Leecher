@@ -97,7 +97,7 @@ async def taskScheduler():
                 ida = "♻️"
             elif is_torrent(link):
                 ida = "🧲"
-                Messages.caution_msg = "\n\n⚠️<i><b> Torrents Are Strictly Prohibited in Google Colab</b>, Try to avoid Magnets !</i>"
+                Messages.caution_msg = ""
             elif is_ytdl_link(link):
                 ida = "🏮"
             elif is_terabox(link):
